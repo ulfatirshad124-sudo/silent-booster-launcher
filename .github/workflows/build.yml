@@ -1,0 +1,38 @@
+
+name: Build SilentLauncher
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Download project
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Extract ZIP
+        shell: pwsh
+        run: |
+          Expand-Archive -Path "SilentLauncher.zip" -DestinationPath "extracted" -Force
+
+      - name: Build EXE
+        shell: pwsh
+        run: |
+          $project = Get-ChildItem "extracted" -Filter "*.csproj" -Recurse | Select-Object -First 1
+          if (-not $project) { throw "CSProj file not found in ZIP" }
+          dotnet publish $project.FullName -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+
+      - name: Download EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: SilentLauncher-EXE
+          path: publish/
